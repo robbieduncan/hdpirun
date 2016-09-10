@@ -18,21 +18,22 @@
 // Public types, variables and macros
 //
 // Log Levels
-enum LogLevel {
+typedef enum loglevel {
 	trace = 0,
 	debug,
 	message,
 	warn,
 	error,
 	critical
-};
+} LogLevel; 
 //
 // Client can set this variable to set log level
-extern enum LogLevel logLevel;
+extern LogLevel logLevel;
 //
 // Default log file is stdout
 extern FILE *logFile;
-
+//
+// Logging macro
 #define LOG(level,message,...) \
 if ( logFile == NULL )\
 	{\
@@ -53,7 +54,6 @@ if ( level >= logLevel )\
 		fprintf(logFile,__log_totalMessage,__LOG_NAMES[level],_log_buffer,##__VA_ARGS__);\
 		free(__log_totalMessage);\
 	}
-
 //
 // Private internal variables and functions below here
 //
