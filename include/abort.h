@@ -1,12 +1,12 @@
-# abort.h
-# hdpirun
-#
-# Utility header to abort the program on an unrecoverable error. Prints the message (printf format) and closes any open resources
-#
-# Author: Robbie Duncan
-# Copyright: Copyright (c) 2016 Robbie Duncan
-# License: See LICENSE
-#
+// abort.h
+// hdpirun
+//
+// Utility header to abort the program on an unrecoverable error. Prints the message (printf format) and closes any open resources
+//
+// Author: Robbie Duncan
+// Copyright: Copyright (c) 2016 Robbie Duncan
+// License: See LICENSE
+//
 #import "log.h"
 #import <stdio.h>
 
