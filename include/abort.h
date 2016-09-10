@@ -7,10 +7,10 @@
 // Copyright: Copyright (c) 2016 Robbie Duncan
 // License: See LICENSE
 //
-#import "log.h"
 #import <stdio.h>
+#import "log.h"
 
 #ifndef ABORT_H
 #define ABORT_H
-#define ABORT(message,...) __LOG(__LOG_CRITICAL,message,##__VA_ARGS__);if (__logFile!=stdout){fclose(__logFile);};exit(1);
+#define ABORT(message,...) LOG(critical,message,##__VA_ARGS__);if (logFile!=stdout){fclose(logFile);};exit(1);
 #endif
