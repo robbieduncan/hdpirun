@@ -89,40 +89,8 @@ void bindControlPort()
 
 int handleDiscoveryRequest(struct sockaddr_in *sock_addr)
 {
-	// Build a discovery response packet to reply with
-	struct hdhomerun_pkt_t *pkt = hdhomerun_pkt_create();
-	
-	// Get the cached valid device structure checked at startup
-	struct hdhomerun_discover_device_t device = getValidDevice();
-	
-	// The packet frame contains TLV entries. I think this is Tag Length Value
-	// Tag is a u8
-	// Write the device type TLV
-	hdhomerun_pkt_write_u8(pkt,HDHOMERUN_TAG_DEVICE_TYPE);
-	hdhomerun_pkt_write_var_length(pkt,sizeof(uint32_t));
-	hdhomerun_pkt_write_u32(pkt,device.device_type);
-	
-	// Write the device ID
-	hdhomerun_pkt_write_u8(pkt,HDHOMERUN_TAG_DEVICE_ID);
-	hdhomerun_pkt_write_var_length(pkt,sizeof(uint32_t));
-	hdhomerun_pkt_write_u32(pkt,device.device_id);
-	
-	// Write the tuner count
-	hdhomerun_pkt_write_u8(pkt,HDHOMERUN_TAG_TUNER_COUNT);
-	hdhomerun_pkt_write_var_length(pkt,sizeof(uint8_t));
-	hdhomerun_pkt_write_u32(pkt,device.tuner_count);
-	
-	// Write the auth data
-	hdhomerun_pkt_write_u8(pkt,HDHOMERUN_TAG_DEVICE_AUTH_BIN);
-	hdhomerun_pkt_write_var_length(pkt,18*sizeof(uint8_t));
-	// To Do: encode the string
-	for (int i=0;i<18;i++)
-	{
-		hdhomerun_pkt_write_var_length(pkt,0);
-	}
-	
-	// Seal the packet frame ready to send
-	hdhomerun_pkt_seal_frame(pkt,HDHOMERUN_TYPE_DISCOVER_RPY);
+	// Get a response packet to send
+	struct hdhomerun_pkt_t *pkt = getDiscoveryReplyPacket();
 	
 	// Send the packet
 	//return hdhomerun_sock_sendto(dss->sock, target_ip, HDHOMERUN_DISCOVER_UDP_PORT, tx_pkt->start, tx_pkt->end - tx_pkt->start, 0);
