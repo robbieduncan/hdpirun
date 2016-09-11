@@ -3,6 +3,8 @@
 #import "abort.h"
 #include <arpa/inet.h>
 
+#define HOMERUN_MAX_DEVICES 10
+
 struct hdhomerun_discover_device_t __validDevice;
 
 void hdHomeRunDeviceDescription(struct hdhomerun_discover_device_t device, char* buffer)
@@ -17,10 +19,10 @@ void hdHomeRunDeviceDescription(struct hdhomerun_discover_device_t device, char*
 
 int verifyHomerunTuner(int ipAddress)
 {
-	struct hdhomerun_discover_device_t foundDevices[10];
+	struct hdhomerun_discover_device_t foundDevices[HOMERUN_MAX_DEVICES];
 	LOG(trace,"About to scan for HD Homerun devices");
 	// Find all devices on the network
-	int no_devices = hdhomerun_discover_find_devices_custom_v2(0, HDHOMERUN_DEVICE_TYPE_TUNER, HDHOMERUN_DEVICE_ID_WILDCARD, foundDevices, 10);
+	int no_devices = hdhomerun_discover_find_devices_custom_v2(0, HDHOMERUN_DEVICE_TYPE_TUNER, HDHOMERUN_DEVICE_ID_WILDCARD, foundDevices, HOMERUN_MAX_DEVICES);
 	LOG(trace,"%i HDHomeRun devices discovered",no_devices);
 	if (no_devices<1)
 	{
@@ -57,6 +59,46 @@ int verifyHomerunTuner(int ipAddress)
 		LOG(message,"Using HDHomeRun device %s",devBuffer);
 	}
 	return 1;
+}
+
+struct hdhomerun_pkt_t* getDiscoveryReplyPacket()
+{
+	// Build a discovery response packet to reply with
+	struct hdhomerun_pkt_t *pkt = hdhomerun_pkt_create();
+	
+	// Get the cached valid device structure checked at startup
+	struct hdhomerun_discover_device_t device = getValidDevice();
+	
+	// The packet frame contains TLV entries.
+
+	// Write the device type TLV
+	hdhomerun_pkt_write_u8(pkt,HDHOMERUN_TAG_DEVICE_TYPE);
+	hdhomerun_pkt_write_var_length(pkt,sizeof(uint32_t));
+	hdhomerun_pkt_write_u32(pkt,device.device_type);
+	
+	// Write the device ID
+	hdhomerun_pkt_write_u8(pkt,HDHOMERUN_TAG_DEVICE_ID);
+	hdhomerun_pkt_write_var_length(pkt,sizeof(uint32_t));
+	hdhomerun_pkt_write_u32(pkt,device.device_id);
+	
+	// Write the tuner count
+	hdhomerun_pkt_write_u8(pkt,HDHOMERUN_TAG_TUNER_COUNT);
+	hdhomerun_pkt_write_var_length(pkt,sizeof(uint8_t));
+	hdhomerun_pkt_write_u32(pkt,device.tuner_count);
+	
+	// Write the auth data
+	hdhomerun_pkt_write_u8(pkt,HDHOMERUN_TAG_DEVICE_AUTH_BIN);
+	hdhomerun_pkt_write_var_length(pkt,18*sizeof(uint8_t));
+	// To Do: encode the string
+	for (int i=0;i<18;i++)
+	{
+		hdhomerun_pkt_write_var_length(pkt,0);
+	}
+	
+	// Seal the packet frame ready to send
+	hdhomerun_pkt_seal_frame(pkt,HDHOMERUN_TYPE_DISCOVER_RPY);
+	
+	return pkt;
 }
 
 struct hdhomerun_discover_device_t getValidDevice()
