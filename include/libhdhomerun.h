@@ -10,9 +10,9 @@
 #ifndef LIBHDHOMERUN_H
 #define LIBHDHOMERUN_H
 
-#import "hdhomerun_os.h"
-#import "hdhomerun_discover.h"
-#import "hdhomerun_pkt.h"
+#include "hdhomerun_os.h"
+#include "hdhomerun_discover.h"
+#include "hdhomerun_pkt.h"
 
 #endif
  
