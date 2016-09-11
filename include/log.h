@@ -1,12 +1,13 @@
-// log.h
-// hdpirun
-//
-// Utility header to log messages. Supports multiple log levels, control over which messages are printed via the _logLevel variable, logging to file or stderr (stderr is the default) and printf format in messages
-//
-// Author: Robbie Duncan
-// Copyright: Copyright (c) 2016 Robbie Duncan
-// License: See LICENSE
-//
+/*
+   log.h
+   hdpirun
+  
+   Utility header to log messages. Supports multiple log levels, control over which messages are printed via the _logLevel variable, logging to file or stderr (stderr is the default) and printf format in messages
+  
+   Author: Robbie Duncan
+   Copyright: Copyright (c) 2016 Robbie Duncan
+   License: See LICENSE
+*/
 #import <stdlib.h>
 #import <stdio.h>
 #include <time.h>
