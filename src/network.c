@@ -1,4 +1,13 @@
-
+/*
+   network.c
+   hdpirun
+  
+   Network communication
+  
+   Author: Robbie Duncan
+   Copyright: Copyright (c) 2016 Robbie Duncan
+   License: See LICENSE
+*/
 #include <net/if.h>
 #include <sys/ioctl.h>
 #include <errno.h>
@@ -12,21 +21,22 @@
 #endif
 #import "network.h"
 #import "log.h"
-#import "abort.h"
 #import "homerun.h"
 #import "hdhomerun_pkt.h"
-
+//
+// Internal private variables for the UDP and TCP sockets
 int __udpServerSocket;
 int __tcpServerSocket;
-
-// Binds to the UDP Control Port
-void bindDiscoverPort()
+//
+// Create and bind to the UDP discovery Port
+int bindDiscoverPort()
 {
 	// Create a socket
 	__udpServerSocket = socket(AF_INET,SOCK_DGRAM,0);
     if (__udpServerSocket < 0)
 	{
-		ABORT("Unable to create UDP socket for network discovery");
+		LOG(critical,"Unable to create UDP socket for network discovery. Error %i: %s",errno,strerror(errno));
+		return 0;
   	}
 	
 	// Create a server address struct
@@ -38,26 +48,29 @@ void bindDiscoverPort()
 	// Bind the socket
     if (bind(__udpServerSocket, (struct sockaddr *) &serverAddress, sizeof(serverAddress)) < 0)
 	{
-		ABORT("Cannot bind to port %i for UDP",HDHOMERUN_DISCOVER_UDP_PORT);
+		LOG(critical,"Cannot bind to port %i for UDP. Error %i, %s",HDHOMERUN_DISCOVER_UDP_PORT,errno,strerror(errno));
+		return 0;
 	}
 	LOG(trace,"UDP discovery port %i bound",HDHOMERUN_DISCOVER_UDP_PORT);
 	
 	// Set socket to non blocking
     if ( fcntl( __udpServerSocket, F_SETFL, O_NONBLOCK, 1 ) == -1 )
     {
-        ABORT("Cannot set UDP discovery port %i to non blocking",HDHOMERUN_DISCOVER_UDP_PORT);
+        LOG(critical,"Cannot set UDP discovery port %i to non blocking. Error %i, %s",HDHOMERUN_DISCOVER_UDP_PORT,errno,strerror(errno));
     }
 	
-	return;
+	return 1;
 }
-
-void bindControlPort()
+//
+// Create and bind the TCP control port
+int bindControlPort()
 {
 	// Create a socket
 	__tcpServerSocket = socket(AF_INET,SOCK_STREAM,0);
     if (__tcpServerSocket < 0)
 	{
-		ABORT("Unable to create TCP socket for network commands");
+		LOG(critical,"Unable to create TCP socket for network commands. Error %i: %s",errno,strerror(errno));
+		return 0;
   	}
 	
 	// Create a server address struct
@@ -69,32 +82,35 @@ void bindControlPort()
 	// Bind the socket
     if (bind(__tcpServerSocket, (struct sockaddr *) &serverAddress, sizeof(serverAddress)) < 0)
 	{
-		ABORT("Cannot bind to port %i for TCP",HDHOMERUN_CONTROL_TCP_PORT);
+		LOG(critical,"Cannot bind to port %i for TCP. Error %i, %s",HDHOMERUN_CONTROL_TCP_PORT,errno,strerror(errno));
+		return 0;
 	}
 	LOG(trace,"TCP control port %i bound",HDHOMERUN_CONTROL_TCP_PORT);
 	
 	// Set socket to non blocking
     if ( fcntl( __tcpServerSocket, F_SETFL, O_NONBLOCK, 1 ) == -1 )
     {
-        ABORT("Cannot set TCP control port %i to non blocking",HDHOMERUN_CONTROL_TCP_PORT);
+        LOG(critical,"Cannot set TCP control port %i to non blocking. Error %i, %s",HDHOMERUN_CONTROL_TCP_PORT,errno,strerror(errno));
+		return 0;
     }
 		
     //try to specify maximum of 3 pending connections for the master socket
     if (listen(__tcpServerSocket, 3) < 0)
     {
-		ABORT("Cannot listen on TCP");
+		LOG(critical,"Cannot listen on TCP port %i. Error %i, %s",HDHOMERUN_CONTROL_TCP_PORT,errno,strerror(errno));
+		return 0;
     }
 		
-	return;
+	return 1;
 }
-
-int handleDiscoveryRequest(struct sockaddr_in *sock_addr)
+//
+// Inernal method to handle a UDP Discovery Request packet. Forms Response packer and sends it back
+int __handleDiscoveryRequest(struct sockaddr_in *sock_addr)
 {
 	// Get a response packet to send
 	struct hdhomerun_pkt_t *pkt = getDiscoveryReplyPacket();
 	
 	// Send the packet
-	//return hdhomerun_sock_sendto(dss->sock, target_ip, HDHOMERUN_DISCOVER_UDP_PORT, tx_pkt->start, tx_pkt->end - tx_pkt->start, 0);
 	const uint8_t *ptr = (const uint8_t *)pkt->start;
 	int length = pkt->end - pkt->start;
 	LOG(trace,"Length of data to send is %i",length);
@@ -131,7 +147,7 @@ int handleDiscoveryRequest(struct sockaddr_in *sock_addr)
 	return 1;
 }
 
-int handleUDP()
+int __handleUDP()
 {
 	// Try and build a packet
 	struct hdhomerun_pkt_t *pkt = hdhomerun_pkt_create();
@@ -159,10 +175,10 @@ int handleUDP()
 	{
 		case HDHOMERUN_TYPE_DISCOVER_REQ:
 			LOG(trace,"Discovery request received");
-			handleDiscoveryRequest(ipv4);
+			__handleDiscoveryRequest(ipv4);
 			break;
 		default:
-			LOG(trace,"Unknow request received: %i",type)
+			LOG(trace,"Unknown UDP request type received: %i",type)
 	}
 		
 	// ToDo: We should destroy that packet!
@@ -194,7 +210,7 @@ void receive()
 		{
 			// UDP socket can be read from
 			LOG(trace,"UDP ready to read");
-			handleUDP();
+			__handleUDP();
 		}
 		
 		if (FD_ISSET(__tcpServerSocket, &readfds))

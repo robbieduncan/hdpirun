@@ -10,7 +10,7 @@ EXEFLAGS=-L$(HDIR)
 
 _HEADERS = \
 log.h \
-abort.h\
+exit.h\
 commandline.h\
 network.h\
 homerun.h
@@ -22,6 +22,7 @@ HDHEADERS = $(patsubst %,$(HDIR)/%,$(_HDHEADERS))
 
 _OBJ = \
 log.o\
+exit.o\
 commandline.o\
 network.o\
 homerun.o\

@@ -11,7 +11,7 @@
 #include <signal.h>
 
 #include "log.h" 
-#include "abort.h"
+#include "exit.h"
 #include "commandline.h"
 #include "network.h"
 #include "homerun.h"
@@ -52,8 +52,6 @@ int main(int argc, char **argv)
 	{
 		ABORT("Failed to parse args, exiting");
 	}
-	logLevel = getArgLogLevel();
-	logFile = getArgLogFile();
 	
 	LOG(debug,"Args Parsed");
 	
@@ -67,8 +65,14 @@ int main(int argc, char **argv)
 	
 	// Start networking
 	LOG(debug,"Opening network ports");
-	bindDiscoverPort();
-	bindControlPort();
+	if (!bindDiscoverPort())
+	{
+		ABORT("Failed to create/bind discovery port");
+	}
+	if (!bindControlPort())
+	{
+		ABORT("Failed to create/bind control port");
+	}
 	LOG(debug,"Network ports open");
 	
 	LOG(message,"Waiting for network commands");
@@ -78,7 +82,5 @@ int main(int argc, char **argv)
 	}
 	LOG(debug,"Shutting down");
 	
-	LOG(message,"hdpirun shut down");
-	
-	return 0;
+	EXIT("hdpirun shut down");
 }

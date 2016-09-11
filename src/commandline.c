@@ -31,10 +31,8 @@ int parseArgs(int argc, char **argv)
 	int optchar;
 	struct hostent *hostDetails;
 	// Set to defaults
-	__argLogLevel = message;
 	__hdHomeRunIP = -1;
-	__logFile = stdout;
-		
+			
 	// Parse the args
 	while ((optchar = getopt(argc, argv, "d:l:h:i:")) != -1)
 	{
@@ -51,29 +49,25 @@ int parseArgs(int argc, char **argv)
 					__usage();
 					return 0;
 				}
-				if (newDebug != trace &&
-					newDebug != debug &&
-					newDebug != warn &&
-					newDebug != error &&
-					newDebug != critical)
+				if (setLogLevel(newDebug))
+				{
+					LOG(debug,"Debug level set to '%i'",newDebug);
+				}
+				else
 				{
 					LOG(critical,"Debug level must be one of 0, 1, 2, 3, 4, 5 (Trace, Debug, Message, Warn, Error, Critical). Passed '%i'",newDebug);
 					__usage();
 					return 0;
 				}
-				LOG(debug,"Debug level set to '%i'",newDebug);
-				__argLogLevel = newDebug;
 				break;
 			case 'l':
-				LOG(debug,"Logfile arg set to '%s'",optarg);
-				FILE *tempLog = fopen(optarg,"a");
-				if (tempLog == NULL)
+				if (setLogFile(optarg))
 				{
-					LOG(critical,"Cannot open log file '' for append",optarg)
+					LOG(debug,"Logfile set to '%s'",optarg);
 				}
 				else
 				{
-					__logFile = tempLog;
+					LOG(warn,"Could not set log file to '$s'",optarg);
 				}
 				break;
 			case 'h':

@@ -28,19 +28,28 @@ typedef enum loglevel {
 	critical
 } LogLevel; 
 //
-// Client can set this variable to set log level
-extern LogLevel logLevel;
+// Set the log level
+int setLogLevel(LogLevel logLevel);
 //
-// Default log file is stdout
-extern FILE *logFile;
+// Get the log level
+LogLevel getLogLevel();
+//
+// Set the file path for log output
+int setLogFile(char *logFilePath);
+//
+// Get the log file
+FILE* getLogFile();
+//
+// Function to clean up any log resources on app shutdown
+void log_cleanUp();
 //
 // Logging macro
 #define LOG(level,message,...) \
-if ( logFile == NULL )\
+if ( getLogFile() == NULL )\
 	{\
 		__logInit();\
 	} \
-if ( level >= logLevel )\
+if ( level >= getLogLevel() )\
 	{\
 		char *__log_totalMessage;\
 		int __log_totalMessageLength = strlen(message)+13;\
@@ -52,7 +61,7 @@ if ( level >= logLevel )\
 		time(&__log_timer);\
 		tm_info = localtime(&__log_timer);\
 		strftime(_log_buffer, 20, "%Y:%m:%d %H:%M:%S", tm_info);\
-		fprintf(logFile,__log_totalMessage,__LOG_NAMES[level],_log_buffer,##__VA_ARGS__);\
+		fprintf(getLogFile(),__log_totalMessage,__LOG_NAMES[level],_log_buffer,##__VA_ARGS__);\
 		free(__log_totalMessage);\
 	}
 //
