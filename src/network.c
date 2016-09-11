@@ -118,7 +118,7 @@ int handleDiscoveryRequest(struct sockaddr_in *sock_addr)
 	int ret = sendto(sendSocket, ptr, length, 0, (struct sockaddr *)&send_sock, sizeof(send_sock));
 	if (ret == -1)
 	{
-		strerror(errno);
+		hdhomerun_pkt_destroy(pkt);
 		LOG(error,"Error sending discovery reply. Error %i: %s",errno,strerror(errno));
 		return 0;
 	}
