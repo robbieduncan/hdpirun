@@ -5,7 +5,8 @@
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <netinet/ip.h> 
+#include <netinet/ip.h>
+#include <string.h> 
 #ifndef SIOCGIFCONF
 #include <sys/sockio.h>
 #endif
@@ -117,8 +118,9 @@ int handleDiscoveryRequest(struct sockaddr_in *sock_addr)
 	int ret = sendto(sendSocket, ptr, length, 0, (struct sockaddr *)&send_sock, sizeof(send_sock));
 	if (ret == -1)
 	{
-		perror("Error:");
-		LOG(error,"Error sending discovery reply. Error number %i",ret);
+		strerror(errno);
+		LOG(error,"Error sending discovery reply. Error %i: %s",errno,strerror(errno));
+		return 0;
 	}
 	else
 	{
@@ -126,7 +128,7 @@ int handleDiscoveryRequest(struct sockaddr_in *sock_addr)
 	}
 	// Destroy the packet
 	hdhomerun_pkt_destroy(pkt);
-	return 0;
+	return 1;
 }
 
 int handleUDP()
