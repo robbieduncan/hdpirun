@@ -111,8 +111,9 @@ int addHomeRunTuners()
 	}
 	else
 	{
+		LOG(trace,"No specific IPs or hostnames requested: adding any found devices up to compiled in max %i",HOMERUN_MAX_DEVICES);
 		// No specified IP adresses or hostnames. Simply add all to the valid devices up to the device limit
-		for (int i=0; i<_requestedIPAddresses && i<no_devices; i++)
+		for (int i=0; i<HOMERUN_MAX_DEVICES && i<no_devices; i++)
 		{
 			_validDevices[i] = foundDevices[i];
 			char devBuffer[255];
