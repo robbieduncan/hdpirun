@@ -58,9 +58,12 @@ int main(int argc, char **argv)
 	// OK note startup
 	LOG(message,"hdpirun starting up");
 	
-	// Check the tuner host
+	// Check the tuner hosts/IPs
 	LOG(debug,"Checking Tuner Hosts");
-	verifyHomerunTuner(getArgHDHomeRunIP());
+	if (!addHomeRunTuners())
+	{
+		ABORT("Unable to verify at least one tuner");
+	}
 	LOG(debug,"Tuner(s) OK");
 	
 	// Start networking

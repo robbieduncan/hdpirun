@@ -1,12 +1,22 @@
 #import "homerun.h"
 #import "log.h"
+#import "homerun.h"
 #include <arpa/inet.h>
-
+//
+// Maimum numbfer of HDHomeRun devices supported
 #define HOMERUN_MAX_DEVICES 10
-
-struct hdhomerun_discover_device_t __validDevice;
-
-void hdHomeRunDeviceDescription(struct hdhomerun_discover_device_t device, char* buffer)
+//
+// Internal variable to store requested IP addresses
+int _ipAddresses[HOMERUN_MAX_DEVICES];
+//
+// How many IP addresses have been requested
+int _requestedIPAddresses = 0;
+//
+// Array of discoved devices that we can use
+struct hdhomerun_discover_device_t _validDevices[HOMERUN_MAX_DEVICES];
+//
+// Internal method to create a human readable description of a HDHomeRun validated device
+void _hdHomeRunDeviceDescription(struct hdhomerun_discover_device_t device, char* buffer)
 {
 	char initAddress[INET_ADDRSTRLEN];
 	int ip = htonl(device.ip_addr);
@@ -15,10 +25,59 @@ void hdHomeRunDeviceDescription(struct hdhomerun_discover_device_t device, char*
 	
 	sprintf(buffer,"ID:%i IP:%s Tuners:%i",device.device_id,initAddress,device.tuner_count);
 }
-
-int verifyHomerunTuner(int ipAddress)
+//
+// Adds an IP address to the list of addresses accepted. Returns 1 on success, 0 on failure. 
+int addHomeRunTunerIP(char* ipAddress)
 {
-	struct hdhomerun_discover_device_t foundDevices[HOMERUN_MAX_DEVICES];
+	if (_requestedIPAddresses >= HOMERUN_MAX_DEVICES)
+	{
+		LOG(error,"Compiled support for %i HDHomeRunDevices. Cannot request more than this.",HOMERUN_MAX_DEVICES);
+		return 0;
+	}
+	// See if this is a valid IP Address
+	int parsedIP;
+	if (!inet_pton(AF_INET, ipAddress, &parsedIP))
+	{
+		LOG(critical,"Could not interpret %s as an IP address",ipAddress);
+		return 0;
+	}
+	// Turn into network byte order
+	parsedIP = htonl(parsedIP);
+	_ipAddresses[_requestedIPAddresses] = parsedIP;
+	_requestedIPAddresses++;
+	LOG(debug,"Added HDHomeRun IP Address '%s'",ipAddress);
+	return 1;
+}
+// Add a hostname ot the list of addresses accepted
+int addHomeRunTunerHostname(char* hostname)
+{	
+	if (_requestedIPAddresses >= HOMERUN_MAX_DEVICES)
+	{
+		LOG(error,"Compiled support for %i HDHomeRunDevices. Cannot request more than this.",HOMERUN_MAX_DEVICES);
+		return 0;
+	}
+	// Is this a valid hostname (can we look up it's IP)?
+	struct hostent *hostDetails;
+	if ((hostDetails = gethostbyname(hostname)) == NULL)
+	{
+		LOG(critical,"Could not get IP address for host %s",hostname);
+		return 0;
+	}
+	struct in_addr **addr_list;
+    addr_list = (struct in_addr **)hostDetails->h_addr_list;
+	// Use the first address
+	int parsedIP = htonl((*addr_list[0]).s_addr);
+	_ipAddresses[_requestedIPAddresses] = parsedIP;
+	_requestedIPAddresses++;
+	LOG(debug,"Added HDHomeRun hostname '%s' as IP '%s'",hostname,(*addr_list[0]).s_addr);
+	
+	return 1;
+}
+//
+// Scan the network for HDHomeRunTuners and add valid tuners from the IP addresses, or all up to the maximum if no tuner specified
+int addHomeRunTuners()
+{
+	struct hdhomerun_discover_device_t foundDevices[2*HOMERUN_MAX_DEVICES]; // Scan for two times as many devices as there are. It is possible this is still not enough
 	LOG(trace,"About to scan for HD Homerun devices");
 	// Find all devices on the network
 	int no_devices = hdhomerun_discover_find_devices_custom_v2(0, HDHOMERUN_DEVICE_TYPE_TUNER, HDHOMERUN_DEVICE_ID_WILDCARD, foundDevices, HOMERUN_MAX_DEVICES);
@@ -29,33 +88,37 @@ int verifyHomerunTuner(int ipAddress)
 		return 0;
 	}
 	
-	// If a host or IP address was supplied on the command line we need to check if that's one of the devices found. If not we will simply use the first one in the list
-	if (ipAddress!=-1)
+	// If a host or IP address was supplied on the command line we need to check if each found host to see if it's one of the valid hosts
+	if (_requestedIPAddresses > 0)
 	{
-		// Loop over all found devices and see if any match the requeted IP address
-		int i;
-		int found = 0;
-		for (i=0;i<no_devices;i++)
+		// Need to check each found device against the list of valid IP addresses.
+		int added_devices = 0;
+		for (int i = 0;i < no_devices && added_devices < HOMERUN_MAX_DEVICES;i++)
 		{
-			if (foundDevices[0].ip_addr == ipAddress)
+			int foundIP = foundDevices[0].ip_addr;
+			for (int j = 0 ;j < _requestedIPAddresses; j++)
 			{
-				LOG(debug,"Found device matching specified ip/hostname");
-				__validDevice = foundDevices[i];
-				found++;
+				if (foundIP == _ipAddresses[j])
+				{
+					_validDevices[added_devices] = foundDevices[i];
+					char devBuffer[255];
+					_hdHomeRunDeviceDescription(_validDevices[added_devices],devBuffer);
+					LOG(message,"Found valid HDHomeRun device %s",devBuffer);
+					added_devices++;
+				}
 			}
-		}
-		if (found == 0)
-		{
-			LOG(critical,"No HDHomeRun devices found on the network for the specified ip/hostname");
-			return 0;
 		}
 	}
 	else
 	{
-		__validDevice = foundDevices[0];
-		char devBuffer[255];
-		hdHomeRunDeviceDescription(__validDevice,devBuffer);
-		LOG(message,"Using HDHomeRun device %s",devBuffer);
+		// No specified IP adresses or hostnames. Simply add all to the valid devices up to the device limit
+		for (int i=0; i<_requestedIPAddresses && i<no_devices; i++)
+		{
+			_validDevices[i] = foundDevices[i];
+			char devBuffer[255];
+			_hdHomeRunDeviceDescription(_validDevices[i],devBuffer);
+			LOG(message,"Found valid HDHomeRun device %s",devBuffer);
+		}
 	}
 	return 1;
 }
@@ -66,7 +129,7 @@ struct hdhomerun_pkt_t* getDiscoveryReplyPacket()
 	struct hdhomerun_pkt_t *pkt = hdhomerun_pkt_create();
 	
 	// Get the cached valid device structure checked at startup
-	struct hdhomerun_discover_device_t device = getValidDevice();
+	struct hdhomerun_discover_device_t device = _validDevices[0];
 	
 	// The packet frame contains TLV entries.
 
@@ -98,9 +161,4 @@ struct hdhomerun_pkt_t* getDiscoveryReplyPacket()
 	hdhomerun_pkt_seal_frame(pkt,HDHOMERUN_TYPE_DISCOVER_RPY);
 	
 	return pkt;
-}
-
-struct hdhomerun_discover_device_t getValidDevice()
-{
-	return __validDevice;
 }

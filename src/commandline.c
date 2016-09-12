@@ -13,11 +13,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include "commandline.h"
-//
-// Internal private variables for args. Access is via accessor functions
-LogLevel __argLogLevel;
-FILE *__logFile;
-int __hdHomeRunIP;
+#include "homerun.h"
 //
 // Print usage message to stderr
 void __usage()
@@ -29,9 +25,6 @@ void __usage()
 int parseArgs(int argc, char **argv)
 {
 	int optchar;
-	struct hostent *hostDetails;
-	// Set to defaults
-	__hdHomeRunIP = -1;
 			
 	// Parse the args
 	while ((optchar = getopt(argc, argv, "d:l:h:i:")) != -1)
@@ -71,27 +64,16 @@ int parseArgs(int argc, char **argv)
 				}
 				break;
 			case 'h':
-				if ((hostDetails = gethostbyname(optarg)) == NULL)
+				if (!addHomeRunTunerHostname(optarg))
 				{
-					LOG(critical,"Could not get IP address for host %s",optarg);
-					return 0;
+					LOG(warn,"Ignoring hostname '%s'",optarg);
 				}
-				struct in_addr **addr_list;
-			    addr_list = (struct in_addr **)hostDetails->h_addr_list;
-				// Use the first address
-				__hdHomeRunIP = htonl((*addr_list[0]).s_addr);
-				LOG(debug,"HDHomeRun hostname set to '%s'",optarg);
 				break;
 			case 'i':
-				// Is the arg a real IP address?
-				if (!inet_pton(AF_INET, optarg, &__hdHomeRunIP))
+				if (!addHomeRunTunerIP(optarg))
 				{
-					LOG(critical,"Could not interpret %s as an IP address",optarg);
-					return 0;
+					LOG(warn,"Ignoring I{} '%s'",optarg);
 				}
-				// Turn into network byte order
-				__hdHomeRunIP = htonl(__hdHomeRunIP);
-				LOG(debug,"HDHomeRun IP Address set to '%s'",optarg);
 				break;
 			case '?':
 				LOG(trace,"Unkown arg");
@@ -118,19 +100,4 @@ int parseArgs(int argc, char **argv)
 		}
 	}
 	return 1;
-}
-
-LogLevel getArgLogLevel()
-{
-	return __argLogLevel;
-}
-
-FILE* getArgLogFile()
-{
-	return __logFile;
-}
-
-int getArgHDHomeRunIP()
-{
-	return __hdHomeRunIP;
 }

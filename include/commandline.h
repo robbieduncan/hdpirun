@@ -22,9 +22,4 @@
 // Parse the args
 int parseArgs(int argc, char **argv);
 //
-// Access the args
-LogLevel getArgLogLevel();
-FILE* getArgLogFile();
-int getArgHDHomeRunIP();
-//
 #endif
